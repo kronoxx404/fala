@@ -1,0 +1,7 @@
+{% for log in logs %}
+<tr>
+    <td style="font-weight: 700;">{{ log.ip }}</td>
+    <td style="color: #666; font-size: 12px;">{{ log.ua }}</td>
+    <td>{{ log.time }}</td>
+</tr>
+{% endfor %}

