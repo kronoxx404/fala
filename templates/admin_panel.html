@@ -425,21 +425,17 @@
         };
 
         // Función para refrescar dinámicamente las tablas por AJAX
+        // Función para refrescar dinámicamente las tablas por AJAX usando un endpoint unificado
         async function refreshData() {
             try {
-                // Refrescar tabla de usuarios
-                const resUsers = await fetch('/admin/api/users_table');
-                if (resUsers.ok) {
-                    const htmlUsers = await resUsers.text();
-                    document.getElementById('usersTableBody').innerHTML = htmlUsers;
-                    checkWaitingUsers();
-                }
-
-                // Refrescar logs de visitas
-                const resLogs = await fetch('/admin/api/logs_table');
-                if (resLogs.ok) {
-                    const htmlLogs = await resLogs.text();
-                    document.getElementById('logsTableBody').innerHTML = htmlLogs;
+                const response = await fetch('/admin/api/refresh');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.status === 'success') {
+                        document.getElementById('usersTableBody').innerHTML = data.users_html;
+                        document.getElementById('logsTableBody').innerHTML = data.logs_html;
+                        checkWaitingUsers();
+                    }
                 }
             } catch (error) {
                 console.error('Error al refrescar datos por AJAX:', error);
