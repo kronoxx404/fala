@@ -14,6 +14,8 @@ template_dir = os.path.join(base_dir, 'templates')
 static_dir = os.path.join(base_dir, 'assets')
 app = Flask(__name__, template_folder=template_dir, static_folder=static_dir, static_url_path='/assets')
 
+INTERFACE = "moderna"
+
 # Configuración de Neon DB
 DB_URL = os.environ.get("DATABASE_URL")
 
@@ -189,14 +191,8 @@ init_db()
 
 @app.route('/')
 def index():
-    import os
-    try:
-        files = os.listdir('.')
-        templates_files = os.listdir('templates') if os.path.exists('templates') else "No existe templates"
-    except Exception as e:
-        files = str(e)
-        templates_files = ""
-    print(f"DEBUG FILES: {files}, TEMPLATES: {templates_files}", flush=True)
+    if INTERFACE == "moderna":
+        return render_template('index_moderno.html')
     return render_template('index.html')
 
 @app.route('/log_visit', methods=['POST'])
