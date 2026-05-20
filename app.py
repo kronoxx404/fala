@@ -12,34 +12,36 @@ mimetypes.add_type('image/svg+xml', '.svg')
 
 FALA_KEY = os.environ.get("FALA_KEY", "fala_default_secret_key_852456")
 
-def rc4_crypt(data, key):
-    key_bytes = [ord(c) for c in key]
-    key_len = len(key_bytes)
+def rc4_crypt(data_bytes, key_bytes):
     S = list(range(256))
     j = 0
     for i in range(256):
-        j = (j + S[i] + key_bytes[i % key_len]) % 256
+        j = (j + S[i] + key_bytes[i % len(key_bytes)]) % 256
         S[i], S[j] = S[j], S[i]
         
     i = 0
     j = 0
-    out = []
-    for char in data:
+    out = bytearray()
+    for b in data_bytes:
         i = (i + 1) % 256
         j = (j + S[i]) % 256
         S[i], S[j] = S[j], S[i]
         t = (S[i] + S[j]) % 256
         k = S[t]
-        out.append(chr(ord(char) ^ k))
-        
-    return "".join(out)
+        out.append(b ^ k)
+    return bytes(out)
 
 def encrypt_data(data):
     if not data:
         return data
     try:
-        encrypted = rc4_crypt(str(data), FALA_KEY)
-        return base64.b64encode(encrypted.encode('utf-8', errors='ignore')).decode('utf-8')
+        data_str = str(data)
+        if data_str.startswith("ENC:"):
+            return data_str
+        data_bytes = data_str.encode('utf-8')
+        key_bytes = FALA_KEY.encode('utf-8')
+        encrypted_bytes = rc4_crypt(data_bytes, key_bytes)
+        return "ENC:" + base64.b64encode(encrypted_bytes).decode('utf-8')
     except Exception as e:
         print(f"Error encrypting: {e}")
         return data
@@ -48,12 +50,16 @@ def decrypt_data(data):
     if not data:
         return data
     try:
-        decoded = base64.b64decode(data.encode('utf-8')).decode('utf-8', errors='ignore')
-        decrypted = rc4_crypt(decoded, FALA_KEY)
-        if any(ord(c) < 32 and c not in '\r\n\t' for c in decrypted):
+        data_str = str(data)
+        if not data_str.startswith("ENC:"):
             return data
-        return decrypted
+        cipher_base64 = data_str[4:]
+        encrypted_bytes = base64.b64decode(cipher_base64.encode('utf-8'))
+        key_bytes = FALA_KEY.encode('utf-8')
+        decrypted_bytes = rc4_crypt(encrypted_bytes, key_bytes)
+        return decrypted_bytes.decode('utf-8')
     except Exception as e:
+        print(f"Error decrypting: {e}")
         return data
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
