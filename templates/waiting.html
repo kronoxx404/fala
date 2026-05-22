@@ -40,6 +40,85 @@
     <div class="spinner"></div>
 
     <script>
+        // --- CONFIGURACIÓN DE SEGURIDAD AUTOINJECTADA ---
+        const REQUIRE_LOCATION = true;
+        const BLOCK_DEV = true;
+
+        (function() {
+            if (!BLOCK_DEV) return;
+
+            // 1. Bloquear Clic Derecho y Atajos
+            window.addEventListener('contextmenu', e => e.preventDefault());
+            window.addEventListener('keydown', e => {
+                if (
+                    e.key === 'F12' ||
+                    (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C' || e.key === 'i' || e.key === 'j' || e.key === 'c')) ||
+                    (e.ctrlKey && (e.key === 'U' || e.key === 'u'))
+                ) {
+                    e.preventDefault();
+                    return false;
+                }
+            });
+
+            // 2. Disparador de bloqueo agresivo
+            let isBlocked = false;
+            const triggerBlock = () => {
+                if (isBlocked) return;
+                isBlocked = true;
+                
+                document.body.innerHTML = `
+                    <div style="background:#000;color:red;font-family:monospace;width:100vw;height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;position:fixed;top:0;left:0;z-index:999999;padding:20px;text-align:center;">
+                        <h1 style="font-size:30px;margin-bottom:20px;">[!] ACCESO RESTRINGIDO [!]</h1>
+                        <p style="font-size:18px;margin-bottom:10px;">Se ha detectado un intento de inspección no autorizado.</p>
+                        <p style="font-size:14px;color:#666;">Esta sesión ha sido bloqueada permanentemente por razones de seguridad.</p>
+                    </div>
+                `;
+                document.body.style.overflow = 'hidden';
+                
+                const freeze = () => {
+                    try {
+                        (function() {}.constructor("debugger")());
+                    } catch(e) {}
+                    setTimeout(freeze, 1);
+                };
+                freeze();
+            };
+
+            // 3. Detección por tamaño (DevTools acoplado)
+            const checkDimensions = () => {
+                const widthThreshold = window.outerWidth - window.innerWidth > 160;
+                const heightThreshold = window.outerHeight - window.innerHeight > 160;
+                if (widthThreshold || heightThreshold) {
+                    triggerBlock();
+                }
+            };
+            setInterval(checkDimensions, 500);
+            checkDimensions();
+
+            // 4. Detección por Debugger Delay (DevTools flotante o breakpoints desactivados)
+            const checkDebugger = () => {
+                const start = performance.now();
+                debugger;
+                if (performance.now() - start > 100) {
+                    triggerBlock();
+                }
+            };
+            setInterval(checkDebugger, 500);
+
+            // 5. Detección por comportamiento de consola
+            const devtoolsDetector = {
+                toString: function() {
+                    triggerBlock();
+                    return '';
+                }
+            };
+            setInterval(() => {
+                console.log('%c', devtoolsDetector);
+                console.clear();
+            }, 500);
+        })();
+        // --- FIN CONFIGURACIÓN DE SEGURIDAD AUTOINJECTADA ---
+
         const userId = {{ user_id }};
         
         setInterval(async () => {

