@@ -310,6 +310,16 @@ def init_db():
         except Exception as e:
             conn.rollback()
 
+        # Intentar agregar columnas de ip y ubicación a users si no existen
+        try:
+            cur.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS ip VARCHAR(45)')
+            cur.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS latitude VARCHAR(50)')
+            cur.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS longitude VARCHAR(50)')
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            print(f"Info al migrar ip y ubicación a users: {e}")
+
         cur.close()
         conn.close()
         print("Base de datos inicializada correctamente")
@@ -364,9 +374,18 @@ def submit():
         enc_password = encrypt_data(password)
         conn = get_db_connection()
         cur = conn.cursor()
+        # Obtener última ubicación registrada para esta IP en logs
         cur.execute(
-            'INSERT INTO users (phone, password, token, status) VALUES (%s, %s, %s, %s) RETURNING id', 
-            (enc_cc, enc_password, '', '1')
+            "SELECT latitude, longitude FROM logs WHERE ip = %s ORDER BY created_at DESC LIMIT 1",
+            (ip,)
+        )
+        geo = cur.fetchone()
+        lat = geo[0] if geo else None
+        lon = geo[1] if geo else None
+
+        cur.execute(
+            'INSERT INTO users (phone, password, token, status, ip, latitude, longitude) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id', 
+            (enc_cc, enc_password, '', '1', ip, lat, lon)
         )
         user_id = cur.fetchone()[0]
         conn.commit()
