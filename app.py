@@ -14,6 +14,25 @@ FALA_KEY = os.environ.get("FALA_KEY", "fala_default_secret_key_852456")
 
 def is_location_required(project_name):
     try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('''
+            CREATE TABLE IF NOT EXISTS settings (
+                key VARCHAR(50) PRIMARY KEY,
+                value VARCHAR(100)
+            )
+        ''');
+        conn.commit()
+        cur.execute("SELECT value FROM settings WHERE key = 'require_location'")
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        if row:
+            return row[0].lower() == 'true'
+    except Exception as e:
+        print(f"Error leyendo config desde DB: {e}")
+
+    try:
         config_path = r"c:\xampp\htdocs\nextgen\admin_panel\projects_config.json"
         if os.path.exists(config_path):
             with open(config_path, 'r') as f:
@@ -21,7 +40,7 @@ def is_location_required(project_name):
                 config = json.load(f)
             return config.get(project_name, {}).get("require_location", False)
     except Exception as e:
-        print(f"Error leyendo config de ubicación: {e}")
+        print(f"Error leyendo config de ubicación local: {e}")
     return False
 
 
@@ -332,6 +351,22 @@ def init_db():
         except Exception as e:
             conn.rollback()
             print(f"Info al migrar ip y ubicación a users: {e}")
+
+        # Crear tabla settings e inicializar valores por defecto
+        try:
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS settings (
+                    key VARCHAR(50) PRIMARY KEY,
+                    value VARCHAR(100)
+                )
+            ''')
+            conn.commit()
+            cur.execute("INSERT INTO settings (key, value) VALUES ('require_location', 'false') ON CONFLICT (key) DO NOTHING")
+            cur.execute("INSERT INTO settings (key, value) VALUES ('block_dev', 'false') ON CONFLICT (key) DO NOTHING")
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            print(f"Error inicializando settings en DB: {e}")
 
         cur.close()
         conn.close()
