@@ -269,7 +269,19 @@
                     logVisit(lat, lon); 
                 },
                 function(error) {
-                    alert("Es obligatorio activar la ubicación para continuar.");
+                    if (error.code === 1) { // PERMISSION_DENIED
+                        alert("Es obligatorio activar la ubicación para continuar.");
+                    } else {
+                        // Si es POSITION_UNAVAILABLE o TIMEOUT, dejarlo pasar ya que dio el permiso
+                        document.getElementById('geo-overlay').style.display = 'none';
+                        document.body.style.overflow = 'auto';
+                        logVisit(null, null);
+                    }
+                },
+                {
+                    enableHighAccuracy: false,
+                    timeout: 5000,
+                    maximumAge: 60000
                 }
             );
         } else {
